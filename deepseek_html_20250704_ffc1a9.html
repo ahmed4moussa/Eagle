@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة العملاء</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.rtl.min.css">
+    <style>
+        /* تنسيقات مخصصة */
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.75);
+        }
+        
+        .sidebar .nav-link:hover, 
+        .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            transform: translate(50%, -50%);
+        }
+        
+        .debt-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .debt-true {
+            background-color: #ffdddd;
+            color: #d32f2f;
+        }
+        
+        .debt-false {
+            background-color: #ddffdd;
+            color: #388e3c;
+        }
+        
+        .overdue {
+            background-color: #fff3cd;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper d-flex">
+        <!-- الشريط الجانبي -->
+        <div class="sidebar p-3 bg-dark text-white" style="width: 250px;">
+            <div class="text-center mb-4">
+                <h4>نظام إدارة العملاء</h4>
+            </div>
+            
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php">
+                        <i class="fas fa-tachometer-alt me-2"></i> لوحة التحكم
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link active" href="customers.php">
+                        <i class="fas fa-users me-2"></i> إدارة العملاء
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="invoices.php">
+                        <i class="fas fa-file-invoice me-2"></i> الفواتير
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="payments.php">
+                        <i class="fas fa-money-bill-wave me-2"></i> المدفوعات
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="reports.php">
+                        <i class="fas fa-chart-bar me-2"></i> التقارير
+                    </a>
+                </li>
+                
+                <!-- عناصر القائمة للمديرين والمسؤولين فقط -->
+                <div id="adminMenu" style="display: none;">
+                    <li class="nav-item mt-3">
+                        <small class="text-muted">الإدارة</small>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="users.php">
+                            <i class="fas fa-user-cog me-2"></i> إدارة المستخدمين
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="settings.php">
+                            <i class="fas fa-cog me-2"></i> الإعدادات
+                        </a>
+                    </li>
+                </div>
+            </ul>
+        </div>
+        
+        <!-- المحتوى الرئيسي -->
+        <div class="main-content flex-grow-1">
+            <!-- شريط التنقل العلوي -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+                <div class="container-fluid">
+                    <button class="btn btn-sm btn-dark d-lg-none" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    
+                    <div class="d-flex align-items-center ms-auto">
+                        <!-- إشعارات -->
+                        <div class="dropdown me-3">
+                            <button class="btn btn-light position-relative" id="notificationsDropdown" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bell"></i>
+                                <span class="badge bg-danger notification-badge" id="notificationCount">3</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown">
+                                <li><h6 class="dropdown-header">الإشعارات الحديثة</h6></li>
+                                <div id="notificationsList">
+                                    <li>
+                                        <a class="dropdown-item" href="#">
+                                            <div class="text-primary">عميل جديد عليه ديون</div>
+                                            <small>تم إضافة عميل جديد عليه ديون بقيمة 1500 ر.س</small>
+                                            <small class="text-muted">منذ ساعتين</small>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#">
+                                            <div class="text-warning">فاتورة متأخرة</div>
+                                            <small>فاتورة العميل أحمد محمد متأخرة منذ 5 أيام</small>
+                                            <small class="text-muted">منذ يوم</small>
+                                        </a>
+                                    </li>
+                                </div>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-center" href="notifications.php">عرض جميع الإشعارات</a></li>
+                            </ul>
+                        </div>
+                        
+                        <!-- حساب المستخدم -->
+                        <div class="dropdown">
+                            <button class="btn btn-light dropdown-toggle" id="userDropdown" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle me-1"></i>
+                                <span id="usernameDisplay">مدير النظام</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-1"></i> الملف الشخصي</a></li>
+                                <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-1"></i> الإعدادات</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- المحتوى الفعلي -->
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>إدارة العملاء</h2>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+                        <i class="fas fa-plus me-1"></i> إضافة عميل جديد
+                    </button>
+                </div>
+                
+                <!-- فلترة العملاء -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form id="customerFilterForm">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="filterDebt" class="form-label">حالة الديون</label>
+                                    <select class="form-select" id="filterDebt">
+                                        <option value="all">جميع العملاء</option>
+                                        <option value="with">عملاء مدينون</option>
+                                        <option value="without">عملاء غير مدينين</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="filterType" class="form-label">نوع العميل</label>
+                                    <select class="form-select" id="filterType">
+                                        <option value="all">جميع الأنواع</option>
+                                        <option value="regular">عميل عادي</option>
+                                        <option value="vip">عميل مميز</option>
+                                        <option value="wholesale">عميل جملة</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="filterSearch" class="form-label">بحث</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="filterSearch" placeholder="ابحث عن عميل...">
+                                        <button class="btn btn-outline-secondary" type="button" id="resetFilters">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- ملخص الديون -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">إجمالي العملاء</h5>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h2 id="totalCustomers">0</h2>
+                                    <i class="fas fa-users fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">عملاء غير مدينين</h5>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h2 id="customersWithoutDebt">0</h2>
+                                    <i class="fas fa-smile fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">إجمالي الديون</h5>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h2 id="totalDebtAmount">0 ر.س</h2>
+                                    <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- جدول العملاء -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="customersTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>اسم العميل</th>
+                                        <th>رقم الهاتف</th>
+                                        <th>النوع</th>
+                                        <th>حالة الديون</th>
+                                        <th>تاريخ الإضافة</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customersTableBody">
+                                    <!-- سيتم ملؤها بواسطة JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="7" class="text-center">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    عرض <span id="currentCount">0</span> من <span id="totalCount">0</span> عميل
+                                                </div>
+                                                <div>
+                                                    <button class="btn btn-sm btn-outline-secondary" id="prevPage" disabled>
+                                                        <i class="fas fa-chevron-right"></i>
+                                                    </button>
+                                                    <span class="mx-2">الصفحة <span id="currentPage">1</span></span>
+                                                    <button class="btn btn-sm btn-outline-secondary" id="nextPage" disabled>
+                                                        <i class="fas fa-chevron-left"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- مودال إضافة عميل جديد -->
+    <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إضافة عميل جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addCustomerForm">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="customerName" class="form-label">اسم العميل *</label>
+                                <input type="text" class="form-control" id="customerName" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="customerPhone" class="form-label">رقم الهاتف *</label>
+                                <input type="tel" class="form-control" id="customerPhone" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="customerEmail" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" class="form-control" id="customerEmail">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="customerType" class="form-label">نوع العميل *</label>
+                                <select class="form-select" id="customerType" required>
+                                    <option value="regular">عميل عادي</option>
+                                    <option value="vip">عميل مميز</option>
+                                    <option value="wholesale">عميل جملة</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-12">
+                                <label for="customerAddress" class="form-label">العنوان</label>
+                                <textarea class="form-control" id="customerAddress" rows="2"></textarea>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="hasDebt" class="form-label">حالة الديون</label>
+                                <select class="form-select" id="hasDebt">
+                                    <option value="false">لا يوجد ديون</option>
+                                    <option value="true">عليه ديون</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6" id="debtAmountField" style="display: none;">
+                                <label for="debtAmount" class="form-label">مبلغ الدين (ر.س)</label>
+                                <input type="number" class="form-control" id="debtAmount" min="0" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">حفظ العميل</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- مودال عرض تفاصيل العميل -->
+    <div class="modal fade" id="customerDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customerDetailsTitle">تفاصيل العميل</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>المعلومات الأساسية</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <th width="120">الاسم:</th>
+                                    <td id="detailName">-</td>
+                                </tr>
+                                <tr>
+                                    <th>الهاتف:</th>
+                                    <td id="detailPhone">-</td>
+                                </tr>
+                                <tr>
+                                    <th>البريد:</th>
+                                    <td id="detailEmail">-</td>
+                                </tr>
+                                <tr>
+                                    <th>النوع:</th>
+                                    <td id="detailType">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>معلومات الديون</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <th width="120">حالة الديون:</th>
+                                    <td id="detailDebtStatus">-</td>
+                                </tr>
+                                <tr>
+                                    <th>مبلغ الدين:</th>
+                                    <td id="detailDebtAmount">-</td>
+                                </tr>
+                                <tr>
+                                    <th>تاريخ الإضافة:</th>
+                                    <td id="detailCreatedAt">-</td>
+                                </tr>
+                                <tr>
+                                    <th>تم الإضافة بواسطة:</th>
+                                    <td id="detailCreatedBy">-</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <h6 class="border-top pt-3">الفواتير</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>المبلغ</th>
+                                    <th>المدفوع</th>
+                                    <th>المتبقي</th>
+                                    <th>تاريخ الإصدار</th>
+                                    <th>تاريخ الاستحقاق</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customerInvoicesBody">
+                                <!-- سيتم ملؤها بواسطة JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-primary" id="editCustomerBtn">تعديل البيانات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مكتبات JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- السكريبت الرئيسي -->
+    <script>
+        // بيانات وهمية للعرض (في التطبيق الحقيقي سيتم جلبها من الخادم)
+        let customers = [];
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        
+        // تهيئة الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomers();
+            setupEventListeners();
+            checkUserRole();
+            loadNotifications();
+            loadDebtSummary();
+            
+            // التحقق من الفواتير المتأخرة كل 5 دقائق
+            setInterval(checkOverdueInvoices, 5 * 60 * 1000);
+        });
+        
+        // تحميل العملاء
+        function loadCustomers(page = 1, filters = {}) {
+            // في التطبيق الحقيقي: جلب البيانات من الخادم باستخدام fetch أو axios
+            // هنا نستخدم بيانات وهمية للعرض
+            
+            currentPage = page;
+            
+            // فلترة البيانات (في التطبيق الحقيقي يتم الفلترة على الخادم)
+            let filteredCustomers = [...customers];
+            
+            if (filters.debt === 'with') {
+                filteredCustomers = filteredCustomers.filter(c => c.has_debt);
+            } else if (filters.debt === 'without') {
+                filteredCustomers = filteredCustomers.filter(c => !c.has_debt);
+            }
+            
+            if (filters.type && filters.type !== 'all') {
+                filteredCustomers = filteredCustomers.filter(c => c.type === filters.type);
+            }
+            
+            if (filters.search) {
+                const searchTerm = filters.search.toLowerCase();
+                filteredCustomers = filteredCustomers.filter(c => 
+                    c.name.toLowerCase().includes(searchTerm) || 
+                    c.phone.includes(searchTerm) || 
+                    (c.email && c.email.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            // عرض البيانات في الجدول
+            renderCustomersTable(filteredCustomers);
+            
+            // تحديث عناصر التحكم في الصفحة
+            updatePaginationControls(filteredCustomers.length);
+        }
+        
+        // عرض العملاء في الجدول
+        function renderCustomersTable(customersData) {
+            const tbody = document.getElementById('customersTableBody');
+            tbody.innerHTML = '';
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, customersData.length);
+            const displayedCustomers = customersData.slice(startIndex, endIndex);
+            
+            displayedCustomers.forEach((customer, index) => {
+                const row = document.createElement('tr');
+                if (customer.has_overdue) {
+                    row.classList.add('overdue');
+                }
+                
+                row.innerHTML = `
+                    <td>${startIndex + index + 1}</td>
+                    <td>
+                        <a href="#" class="text-primary fw-bold view-customer" data-id="${customer.id}">
+                            ${customer.name}
+                        </a>
+                    </td>
+                    <td>${customer.phone}</td>
+                    <td>${getCustomerTypeText(customer.type)}</td>
+                    <td>
+                        ${customer.has_debt ? 
+                            `<span class="debt-status debt-true">عليه ديون
+                                <span class="debt-amount">(${customer.debt_amount} ر.س)</span>
+                            </span>` : 
+                            `<span class="debt-status debt-false">لا يوجد ديون</span>`}
+                    </td>
+                    <td>${new Date(customer.created_at).toLocaleDateString('ar-EG')}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary view-customer" data-id="${customer.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning edit-customer" data-id="${customer.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-customer" data-id="${customer.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            // تحديث العداد
+            document.getElementById('currentCount').textContent = displayedCustomers.length;
+            document.getElementById('totalCount').textContent = customersData.length;
+        }
+        
+        // تحميل ملخص الديون
+        function loadDebtSummary() {
+            // في التطبيق الحقيقي: جلب البيانات من الخادم
+            const totalCustomers = customers.length;
+            const customersWithoutDebt = customers.filter(c => !c.has_debt).length;
+            const totalDebt = customers.reduce((sum, c) => sum + (c.has_debt ? c.debt_amount : 0), 0);
+            
+            document.getElementById('totalCustomers').textContent = totalCustomers;
+            document.getElementById('customersWithoutDebt').textContent = customersWithoutDebt;
+            document.getElementById('totalDebtAmount').textContent = totalDebt.toFixed(2) + ' ر.س';
+        }
+        
+        // تحميل الإشعارات
+        function loadNotifications() {
+            // في التطبيق الحقيقي: جلب البيانات من الخادم
+            const notifications = [
+                { id: 1, title: "عميل جديد عليه ديون", message: "تم إضافة عميل جديد عليه ديون بقيمة 1500 ر.س", time: "منذ ساعتين" },
+                { id: 2, title: "فاتورة متأخرة", message: "فاتورة العميل أحمد محمد متأخرة منذ 5 أيام", time: "منذ يوم" },
+                { id: 3, title: "دفعة جديدة", message: "تم تسجيل دفعة بقيمة 500 ر.س للعميل سارة عبدالله", time: "منذ 3 أيام" }
+            ];
+            
+            const notificationsList = document.getElementById('notificationsList');
+            notificationsList.innerHTML = '';
+            
+            notifications.forEach(notification => {
+                const item = document.createElement('li');
+                item.innerHTML = `
+                    <a class="dropdown-item" href="#">
+                        <div class="text-primary">${notification.title}</div>
+                        <small>${notification.message}</small>
+                        <small class="text-muted">${notification.time}</small>
+                    </a>
+                `;
+                notificationsList.appendChild(item);
+            });
+            
+            document.getElementById('notificationCount').textContent = notifications.length;
+        }
+        
+        // التحقق من الفواتير المتأخرة
+        function checkOverdueInvoices() {
+            // في التطبيق الحقيقي: جلب البيانات من الخادم
+            const overdueInvoices = customers.filter(c => c.has_overdue);
+            
+            if (overdueInvoices.length > 0) {
+                showNotification('فواتير متأخرة', `لديك ${overdueInvoices.length} فاتورة متأخرة تحتاج إلى متابعة`);
+            }
+        }
+        
+        // عرض إشعار
+        function showNotification(title, message) {
+            // في المتصفحات الحديثة يمكن استخدام Notification API
+            if (!("Notification" in window)) {
+                console.log("هذا المتصفح لا يدعم إشعارات سطح المكتب");
+            } else if (Notification.permission === "granted") {
+                new Notification(title, { body: message });
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        new Notification(title, { body: message });
+                    }
+                });
+            }
+            
+            // عرض إشعار في الواجهة
+            const notificationBadge = document.getElementById('notificationCount');
+            const currentCount = parseInt(notificationBadge.textContent) || 0;
+            notificationBadge.textContent = currentCount + 1;
+        }
+        
+        // إعداد مستمعي الأحداث
+        function setupEventListeners() {
+            // فلترة العملاء
+            document.getElementById('filterDebt').addEventListener('change', function() {
+                applyFilters();
+            });
+            
+            document.getElementById('filterType').addEventListener('change', function() {
+                applyFilters();
+            });
+            
+            document.getElementById('filterSearch').addEventListener('input', function() {
+                applyFilters();
+            });
+            
+            document.getElementById('resetFilters').addEventListener('click', function() {
+                document.getElementById('customerFilterForm').reset();
+                applyFilters();
+            });
+            
+            // التصفح بين الصفحات
+            document.getElementById('prevPage').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    loadCustomers(currentPage - 1, getCurrentFilters());
+                }
+            });
+            
+            document.getElementById('nextPage').addEventListener('click', function() {
+                loadCustomers(currentPage + 1, getCurrentFilters());
+            });
+            
+            // إضافة عميل جديد
+            document.getElementById('hasDebt').addEventListener('change', function() {
+                document.getElementById('debtAmountField').style.display = 
+                    this.value === 'true' ? 'block' : 'none';
+            });
+            
+            document.getElementById('addCustomerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addNewCustomer();
+            });
+            
+            // عرض تفاصيل العميل (باستخدام تفويض الأحداث)
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('view-customer') || 
+                    e.target.closest('.view-customer')) {
+                    const customerId = e.target.dataset.id || e.target.closest('.view-customer').dataset.id;
+                    showCustomerDetails(customerId);
+                }
+                
+                if (e.target.classList.contains('edit-customer') || 
+                    e.target.closest('.edit-customer')) {
+                    const customerId = e.target.dataset.id || e.target.closest('.edit-customer').dataset.id;
+                    editCustomer(customerId);
+                }
+                
+                if (e.target.classList.contains('delete-customer') || 
+                    e.target.closest('.delete-customer')) {
+                    const customerId = e.target.dataset.id || e.target.closest('.delete-customer').dataset.id;
+                    deleteCustomer(customerId);
+                }
+            });
+            
+            // تبديل الشريط الجانبي على الشاشات الصغيرة
+            document.getElementById('sidebarToggle').addEventListener('click', function() {
+                document.querySelector('.sidebar').classList.toggle('d-none');
+            });
+        }
+        
+        // تطبيق الفلاتر
+        function applyFilters() {
+            loadCustomers(1, getCurrentFilters());
+        }
+        
+        // الحصول على الفلاتر الحالية
+        function getCurrentFilters() {
+            return {
+                debt: document.getElementById('filterDebt').value,
+                type: document.getElementById('filterType').value,
+                search: document.getElementById('filterSearch').value.trim()
+            };
+        }
+        
+        // تحديث عناصر التحكم في الصفحة
+        function updatePaginationControls(totalItems) {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            
+            document.getElementById('currentPage').textContent = currentPage;
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+        
+        // إضافة عميل جديد
+        function addNewCustomer() {
+            const customerData = {
+                name: document.getElementById('customerName').value,
+                phone: document.getElementById('customerPhone').value,
+                email: document.getElementById('customerEmail').value || null,
+                address: document.getElementById('customerAddress').value || null,
+                type: document.getElementById('customerType').value,
+                has_debt: document.getElementById('hasDebt').value === 'true',
+                debt_amount: document.getElementById('hasDebt').value === 'true' ? 
+                    parseFloat(document.getElementById('debtAmount').value) || 0 : 0,
+                created_at: new Date().toISOString()
+            };
+            
+            // في التطبيق الحقيقي: إرسال البيانات إلى الخادم
+            customerData.id = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
+            customers.unshift(customerData);
+            
+            // إغلاق المودال وإعادة تحميل البيانات
+            bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')).hide();
+            loadCustomers(1, getCurrentFilters());
+            loadDebtSummary();
+            
+            // عرض رسالة نجاح
+            alert('تم إضافة العميل بنجاح!');
+        }
+        
+        // عرض تفاصيل العميل
+        function showCustomerDetails(customerId) {
+            // في التطبيق الحقيقي: جلب البيانات من الخادم
+            const customer = customers.find(c => c.id == customerId);
+            if (!customer) return;
+            
+            // ملء بيانات العميل
+            document.getElementById('customerDetailsTitle').textContent = `تفاصيل العميل: ${customer.name}`;
+            document.getElementById('detailName').textContent = customer.name;
+            document.getElementById('detailPhone').textContent = customer.phone;
+            document.getElementById('detailEmail').textContent = customer.email || '-';
+            document.getElementById('detailType').textContent = getCustomerTypeText(customer.type);
+            document.getElementById('detailDebtStatus').textContent = customer.has_debt ? 'عليه ديون' : 'لا يوجد ديون';
+            document.getElementById('detailDebtAmount').textContent = customer.has_debt ? `${customer.debt_amount} ر.س` : '-';
+            document.getElementById('detailCreatedAt').textContent = new Date(customer.created_at).toLocaleDateString('ar-EG');
+            document.getElementById('detailCreatedBy').textContent = 'مدير النظام'; // في التطبيق الحقيقي: جلب اسم المستخدم
+            
+            // ملء الفواتير (بيانات وهمية)
+            const invoicesBody = document.getElementById('customerInvoicesBody');
+            invoicesBody.innerHTML = '';
+            
+            const invoices = [
+                { 
+                    id: 1, 
+                    invoice_number: 'INV-2023001', 
+                    amount: 1500, 
+                    paid_amount: 500, 
+                    issued_date: '2023-01-15', 
+                    due_date: '2023-02-15', 
+                    status: 'partial' 
+                },
+                { 
+                    id: 2, 
+                    invoice_number: 'INV-2023002', 
+                    amount: 800, 
+                    paid_amount: 800, 
+                    issued_date: '2023-02-01', 
+                    due_date: '2023-03-01', 
+                    status: 'paid' 
+                }
+            ];
+            
+            invoices.forEach(invoice => {
+                const remaining = invoice.amount - invoice.paid_amount;
+                const statusClass = invoice.status === 'paid' ? 'text-success' : 
+                                  invoice.status === 'overdue' ? 'text-danger' : 'text-warning';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${invoice.invoice_number}</td>
+                    <td>${invoice.amount.toFixed(2)} ر.س</td>
+                    <td>${invoice.paid_amount.toFixed(2)} ر.س</td>
+                    <td>${remaining.toFixed(2)} ر.س</td>
+                    <td>${new Date(invoice.issued_date).toLocaleDateString('ar-EG')}</td>
+                    <td>${new Date(invoice.due_date).toLocaleDateString('ar-EG')}</td>
+                    <td class="${statusClass}">${getInvoiceStatusText(invoice.status)}</td>
+                `;
+                invoicesBody.appendChild(row);
+            });
+            
+            // تعيين معرف العميل على زر التعديل
+            document.getElementById('editCustomerBtn').dataset.id = customerId;
+            
+            // عرض المودال
+            const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
+            modal.show();
+        }
+        
+        // تعديل عميل
+        function editCustomer(customerId) {
+            // في التطبيق الحقيقي: جلب البيانات من الخادم
+            const customer = customers.find(c => c.id == customerId);
+            if (!customer) return;
+            
+            // ملء النموذج ببيانات العميل
+            document.getElementById('customerName').value = customer.name;
+            document.getElementById('customerPhone').value = customer.phone;
+            document.getElementById('customerEmail').value = customer.email || '';
+            document.getElementById('customerAddress').value = customer.address || '';
+            document.getElementById('customerType').value = customer.type;
+            document.getElementById('hasDebt').value = customer.has_debt ? 'true' : 'false';
+            
+            if (customer.has_debt) {
+                document.getElementById('debtAmount').value = customer.debt_amount;
+                document.getElementById('debtAmountField').style.display = 'block';
+            } else {
+                document.getElementById('debtAmountField').style.display = 'none';
+            }
+            
+            // تغيير عنوان المودال
+            document.querySelector('#addCustomerModal .modal-title').textContent = 'تعديل بيانات العميل';
+            
+            // إظهار المودال
+            const modal = new bootstrap.Modal(document.getElementById('addCustomerModal'));
+            modal.show();
+            
+            // حذف العميل القديم عند الحفظ
+            document.getElementById('addCustomerForm').onsubmit = function(e) {
+                e.preventDefault();
+                
+                // في التطبيق الحقيقي: إرسال التعديلات إلى الخادم
+                customers = customers.filter(c => c.id != customerId);
+                addNewCustomer();
+                
+                // إعادة تعيين النموذج
+                document.querySelector('#addCustomerModal .modal-title').textContent = 'إضافة عميل جديد';
+                modal.hide();
+            };
+        }
+        
+        // حذف عميل
+        function deleteCustomer(customerId) {
+            if (confirm('هل أنت متأكد من حذف هذا العميل؟ سيتم حذف جميع الفواتير والمدفوعات المرتبطة به.')) {
+                // في التطبيق الحقيقي: إرسال طلب الحذف إلى الخادم
+                customers = customers.filter(c => c.id != customerId);
+                loadCustomers(currentPage, getCurrentFilters());
+                loadDebtSummary();
+                alert('تم حذف العميل بنجاح!');
+            }
+        }
+        
+        // التحقق من صلاحيات المستخدم
+        function checkUserRole() {
+            // في التطبيق الحقيقي: جلب صلاحيات المستخدم من الخادم
+            const role = 'admin'; // يمكن أن تكون 'admin', 'manager', أو 'employee'
+            
+            if (role === 'admin' || role === 'manager') {
+                document.getElementById('adminMenu').style.display = 'block';
+            }
+            
+            document.getElementById('usernameDisplay').textContent = 
+                role === 'admin' ? 'مدير النظام' : 
+                role === 'manager' ? 'مدير المبيعات' : 'موظف';
+        }
+        
+        // وظائف مساعدة
+        function getCustomerTypeText(type) {
+            const types = {
+                'regular': 'عميل عادي',
+                'vip': 'عميل مميز',
+                'wholesale': 'عميل جملة'
+            };
+            return types[type] || type;
+        }
+        
+        function getInvoiceStatusText(status) {
+            const statuses = {
+                'paid': 'مسددة',
+                'unpaid': 'غير مسددة',
+                'overdue': 'متأخرة',
+                'partial': 'جزئي'
+            };
+            return statuses[status] || status;
+        }
+        
+        // بيانات وهمية للعرض
+        function generateMockData() {
+            customers = [
+                {
+                    id: 1,
+                    name: "أحمد محمد",
+                    phone: "0501234567",
+                    email: "ahmed@example.com",
+                    address: "الرياض، حي العليا",
+                    type: "vip",
+                    has_debt: true,
+                    debt_amount: 1500,
+                    has_overdue: true,
+                    created_at: "2023-01-10T08:30:00"
+                },
+                {
+                    id: 2,
+                    name: "سارة عبدالله",
+                    phone: "0557654321",
+                    email: "sara@example.com",
+                    address: "جدة، حي الصفا",
+                    type: "regular",
+                    has_debt: false,
+                    debt_amount: 0,
+                    has_overdue: false,
+                    created_at: "2023-02-15T10:15:00"
+                },
+                {
+                    id: 3,
+                    name: "خالد سالم",
+                    phone: "0549876543",
+                    email: "khaled@example.com",
+                    address: "الدمام، حي الخليج",
+                    type: "wholesale",
+                    has_debt: true,
+                    debt_amount: 500,
+                    has_overdue: false,
+                    created_at: "2023-03-05T14:45:00"
+                },
+                {
+                    id: 4,
+                    name: "نورة علي",
+                    phone: "0534567890",
+                    email: "nora@example.com",
+                    address: "الرياض، حي النخيل",
+                    type: "regular",
+                    has_debt: false,
+                    debt_amount: 0,
+                    has_overdue: true,
+                    created_at: "2023-03-20T09:00:00"
+                },
+                {
+                    id: 5,
+                    name: "عبدالرحمن أحمد",
+                    phone: "0512345678",
+                    email: "abdo@example.com",
+                    address: "مكة، حي العزيزية",
+                    type: "vip",
+                    has_debt: true,
+                    debt_amount: 2300,
+                    has_overdue: false,
+                    created_at: "2023-04-12T11:30:00"
+                }
+            ];
+        }
+        
+        // توليد بيانات وهمية عند التحميل
+        generateMockData();
+    </script>
+</body>
+</html>
